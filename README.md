@@ -1,4 +1,4 @@
-# -THER-Cosmic-Clockwork
+# THER-Cosmic-Clockwork
 
 Here's what's living inside it:
 
