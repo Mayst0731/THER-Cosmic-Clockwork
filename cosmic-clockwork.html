@@ -1,0 +1,612 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ÆTHER — Cosmic Clockwork</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=Share+Tech+Mono&family=Cinzel:wght@400;600;900&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --void: #03020a;
+    --deep: #070514;
+    --nebula: #110d24;
+    --gold: #c9a84c;
+    --gold-pale: #e8d5a3;
+    --gold-dim: #6b5928;
+    --silver: #a8b8d0;
+    --silver-dim: #3d4f63;
+    --crimson: #8b1a2e;
+    --crimson-bright: #e02040;
+    --cyan: #4ab8d8;
+    --cyan-dim: #1a4455;
+    --text: #d4c9b8;
+    --text-dim: #5a5248;
+  }
+
+  html, body {
+    width: 100%; height: 100%;
+    background: var(--void);
+    color: var(--text);
+    font-family: 'Share Tech Mono', monospace;
+    overflow: hidden;
+    cursor: crosshair;
+  }
+
+  /* ── Starfield ── */
+  #starfield {
+    position: fixed; inset: 0; z-index: 0;
+    background: radial-gradient(ellipse at 30% 40%, #0d0820 0%, var(--void) 70%);
+  }
+  #starfield canvas { width: 100%; height: 100%; }
+
+  /* ── Main Layout ── */
+  #app {
+    position: relative; z-index: 1;
+    width: 100vw; height: 100vh;
+    display: grid;
+    grid-template-columns: 280px 1fr 280px;
+    grid-template-rows: 80px 1fr 80px;
+    padding: 0;
+    pointer-events: none;
+  }
+
+  /* ── Header ── */
+  header {
+    grid-column: 1 / -1;
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 0 36px;
+    border-bottom: 1px solid var(--gold-dim);
+    background: linear-gradient(180deg, rgba(201,168,76,0.04) 0%, transparent 100%);
+    pointer-events: all;
+  }
+
+  .brand {
+    font-family: 'Cinzel', serif;
+    font-size: 22px; font-weight: 900;
+    letter-spacing: 0.25em;
+    color: var(--gold);
+    text-shadow: 0 0 30px rgba(201,168,76,0.4);
+  }
+  .brand span { color: var(--gold-pale); font-weight: 400; font-size: 11px; letter-spacing: 0.4em; display: block; margin-top: 2px; }
+
+  .header-center {
+    text-align: center;
+    font-size: 10px; letter-spacing: 0.3em;
+    color: var(--text-dim);
+    text-transform: uppercase;
+  }
+  .header-center .live { color: var(--crimson-bright); letter-spacing: 0.15em; }
+  .header-center .live::before { content: '● '; animation: blink 1.4s infinite; }
+  @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.2} }
+
+  .header-time {
+    text-align: right;
+    font-size: 28px; color: var(--gold-pale);
+    letter-spacing: 0.08em;
+    text-shadow: 0 0 20px rgba(201,168,76,0.25);
+  }
+  .header-time .date { font-size: 10px; letter-spacing: 0.3em; color: var(--text-dim); display: block; }
+
+  /* ── Sidebar Panels ── */
+  .panel-left, .panel-right {
+    display: flex; flex-direction: column; gap: 0;
+    border-color: var(--gold-dim);
+    pointer-events: all;
+  }
+  .panel-left { border-right: 1px solid var(--gold-dim); }
+  .panel-right { border-left: 1px solid var(--gold-dim); }
+
+  .card {
+    padding: 20px 24px;
+    border-bottom: 1px solid rgba(201,168,76,0.12);
+    position: relative;
+    overflow: hidden;
+    transition: background 0.3s;
+  }
+  .card:hover { background: rgba(201,168,76,0.03); }
+  .card::before {
+    content: '';
+    position: absolute; top: 0; left: 0;
+    width: 2px; height: 0;
+    background: var(--gold);
+    transition: height 0.4s;
+  }
+  .card:hover::before { height: 100%; }
+
+  .card-label {
+    font-size: 9px; letter-spacing: 0.4em;
+    color: var(--text-dim); text-transform: uppercase;
+    margin-bottom: 10px;
+  }
+  .card-value {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 36px; font-weight: 300; font-style: italic;
+    color: var(--gold-pale);
+    line-height: 1;
+  }
+  .card-value.mono { font-family: 'Share Tech Mono', monospace; font-size: 22px; font-style: normal; }
+  .card-sub {
+    font-size: 9px; color: var(--text-dim);
+    letter-spacing: 0.2em; margin-top: 6px;
+  }
+
+  /* Bar chart */
+  .bar-chart { display: flex; flex-direction: column; gap: 8px; margin-top: 4px; }
+  .bar-row { display: flex; align-items: center; gap: 10px; font-size: 9px; letter-spacing: 0.2em; }
+  .bar-label { width: 60px; color: var(--text-dim); }
+  .bar-track { flex: 1; height: 2px; background: var(--silver-dim); position: relative; }
+  .bar-fill { height: 100%; background: linear-gradient(90deg, var(--gold-dim), var(--gold)); transform-origin: left; }
+  .bar-val { width: 30px; text-align: right; color: var(--silver); }
+
+  /* Spectrum */
+  .spectrum { display: flex; gap: 2px; margin-top: 8px; align-items: flex-end; height: 40px; }
+  .spec-bar {
+    flex: 1; background: var(--cyan-dim);
+    border-top: 1px solid var(--cyan);
+    transition: height 0.3s ease;
+  }
+
+  /* ── Center Stage ── */
+  .center {
+    display: flex; align-items: center; justify-content: center;
+    position: relative;
+    pointer-events: all;
+  }
+
+  /* ── Orrery ── */
+  #orrery {
+    position: relative;
+    width: 420px; height: 420px;
+    flex-shrink: 0;
+  }
+
+  #orrery-canvas {
+    position: absolute; inset: 0;
+    width: 100%; height: 100%;
+  }
+
+  .orrery-label {
+    position: absolute;
+    bottom: -40px; left: 50%;
+    transform: translateX(-50%);
+    font-size: 9px; letter-spacing: 0.5em;
+    color: var(--text-dim); text-transform: uppercase;
+    white-space: nowrap;
+  }
+
+  /* ── Footer ── */
+  footer {
+    grid-column: 1 / -1;
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 0 36px;
+    border-top: 1px solid var(--gold-dim);
+    background: linear-gradient(0deg, rgba(201,168,76,0.03) 0%, transparent 100%);
+    pointer-events: all;
+  }
+
+  .ticker {
+    display: flex; gap: 40px;
+    font-size: 10px; letter-spacing: 0.15em;
+    overflow: hidden;
+  }
+  .ticker-item { white-space: nowrap; }
+  .ticker-item .sym { color: var(--gold); }
+  .ticker-item .up { color: #4dba70; }
+  .ticker-item .dn { color: var(--crimson-bright); }
+
+  .status-row {
+    display: flex; gap: 24px; align-items: center;
+    font-size: 9px; letter-spacing: 0.25em; color: var(--text-dim);
+  }
+  .status-dot { width: 6px; height: 6px; border-radius: 50%; display: inline-block; margin-right: 6px; }
+  .status-dot.on { background: #4dba70; box-shadow: 0 0 6px #4dba70; }
+  .status-dot.warn { background: var(--gold); box-shadow: 0 0 6px var(--gold); animation: blink 2s infinite; }
+
+  /* ── Decorative corners ── */
+  .corner {
+    position: fixed; width: 40px; height: 40px;
+    border-color: var(--gold-dim);
+    border-style: solid;
+    pointer-events: none; z-index: 2;
+  }
+  .corner.tl { top: 8px; left: 8px; border-width: 1px 0 0 1px; }
+  .corner.tr { top: 8px; right: 8px; border-width: 1px 1px 0 0; }
+  .corner.bl { bottom: 8px; left: 8px; border-width: 0 0 1px 1px; }
+  .corner.br { bottom: 8px; right: 8px; border-width: 0 1px 1px 0; }
+
+  /* ── Scan line overlay ── */
+  body::after {
+    content: '';
+    position: fixed; inset: 0; z-index: 100;
+    background: repeating-linear-gradient(
+      0deg, transparent, transparent 3px,
+      rgba(0,0,0,0.03) 3px, rgba(0,0,0,0.03) 4px
+    );
+    pointer-events: none;
+  }
+
+  /* ── Fade-in ── */
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(12px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  .card { animation: fadeUp 0.7s ease both; }
+  .card:nth-child(2) { animation-delay: 0.08s; }
+  .card:nth-child(3) { animation-delay: 0.16s; }
+  .card:nth-child(4) { animation-delay: 0.24s; }
+  .card:nth-child(5) { animation-delay: 0.32s; }
+  #orrery { animation: fadeUp 0.9s ease 0.3s both; }
+  header, footer { animation: fadeUp 0.5s ease both; }
+</style>
+</head>
+<body>
+
+<div id="starfield"><canvas id="stars"></canvas></div>
+
+<div class="corner tl"></div>
+<div class="corner tr"></div>
+<div class="corner bl"></div>
+<div class="corner br"></div>
+
+<div id="app">
+
+  <!-- HEADER -->
+  <header>
+    <div class="brand">ÆTHER<span>Observational Instrument v4.1</span></div>
+    <div class="header-center">
+      <div class="live">Signal Acquired</div>
+      <div style="margin-top:4px">Sector 7 · Deep Field · Epoch 2025.2</div>
+    </div>
+    <div class="header-time">
+      <span id="clock">——:——:——</span>
+      <span class="date" id="dateline">—</span>
+    </div>
+  </header>
+
+  <!-- LEFT PANEL -->
+  <div class="panel-left">
+    <div class="card">
+      <div class="card-label">Solar Index</div>
+      <div class="card-value" id="solar-val">8.4</div>
+      <div class="card-sub">X-CLASS ACTIVITY · RISING</div>
+    </div>
+    <div class="card">
+      <div class="card-label">Spectral Bands</div>
+      <div class="spectrum" id="spectrum"></div>
+      <div class="card-sub" style="margin-top:10px">INFRARED → ULTRAVIOLET</div>
+    </div>
+    <div class="card">
+      <div class="card-label">Orbital Periods (days)</div>
+      <div class="bar-chart">
+        <div class="bar-row"><span class="bar-label">Mercury</span><div class="bar-track"><div class="bar-fill" style="width:8%"></div></div><span class="bar-val">88</span></div>
+        <div class="bar-row"><span class="bar-label">Venus</span><div class="bar-track"><div class="bar-fill" style="width:18%"></div></div><span class="bar-val">225</span></div>
+        <div class="bar-row"><span class="bar-label">Earth</span><div class="bar-track"><div class="bar-fill" style="width:27%"></div></div><span class="bar-val">365</span></div>
+        <div class="bar-row"><span class="bar-label">Mars</span><div class="bar-track"><div class="bar-fill" style="width:50%"></div></div><span class="bar-val">687</span></div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-label">Magnetic Flux  (nT)</div>
+      <div class="card-value mono" id="flux-val">—</div>
+      <div class="card-sub">GEOMAGNETIC FIELD STRENGTH</div>
+    </div>
+  </div>
+
+  <!-- CENTER -->
+  <div class="center">
+    <div id="orrery">
+      <canvas id="orrery-canvas" width="420" height="420"></canvas>
+      <div class="orrery-label">Mechanical Orrery · Heliocentric Model</div>
+    </div>
+  </div>
+
+  <!-- RIGHT PANEL -->
+  <div class="panel-right">
+    <div class="card">
+      <div class="card-label">Cosmic Ray Flux</div>
+      <div class="card-value" id="ray-val">2.71</div>
+      <div class="card-sub">PARTICLES / cm² · s · sr</div>
+    </div>
+    <div class="card">
+      <div class="card-label">Dark Matter Density</div>
+      <div class="card-value" id="dm-val">0.3</div>
+      <div class="card-sub">GeV / cm³ · LOCAL ESTIMATE</div>
+    </div>
+    <div class="card">
+      <div class="card-label">Observatory Bearing</div>
+      <div class="card-value mono" id="bearing-val">—</div>
+      <div class="card-sub">AZIMUTH · DECLINATION</div>
+    </div>
+    <div class="card">
+      <div class="card-label">Exoplanet Signals</div>
+      <div class="bar-chart">
+        <div class="bar-row"><span class="bar-label">Kepler-22</span><div class="bar-track"><div class="bar-fill" style="width:72%"></div></div><span class="bar-val">0.72</span></div>
+        <div class="bar-row"><span class="bar-label">Trappist-1</span><div class="bar-track"><div class="bar-fill" style="width:89%"></div></div><span class="bar-val">0.89</span></div>
+        <div class="bar-row"><span class="bar-label">Proxima b</span><div class="bar-track"><div class="bar-fill" style="width:45%"></div></div><span class="bar-val">0.45</span></div>
+        <div class="bar-row"><span class="bar-label">HD 40307</span><div class="bar-track"><div class="bar-fill" style="width:61%"></div></div><span class="bar-val">0.61</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- FOOTER -->
+  <footer>
+    <div class="ticker" id="ticker">
+      <span class="ticker-item"><span class="sym">AU/USD</span> 1.0847 <span class="up">▲0.12%</span></span>
+      <span class="ticker-item"><span class="sym">LIGHT-SPEED</span> 299,792 km/s <span class="up">CONSTANT</span></span>
+      <span class="ticker-item"><span class="sym">HUBBLE</span> 73.4 km/s/Mpc <span class="dn">▼0.03%</span></span>
+      <span class="ticker-item"><span class="sym">CMB-TEMP</span> 2.725 K <span class="up">NOMINAL</span></span>
+      <span class="ticker-item"><span class="sym">ENTROPY</span> <span id="entropy">—</span> <span class="up">▲INCREASING</span></span>
+    </div>
+    <div class="status-row">
+      <span><span class="status-dot on"></span>ARRAY ONLINE</span>
+      <span><span class="status-dot on"></span>TELEMETRY</span>
+      <span><span class="status-dot warn"></span>SOLAR WIND</span>
+    </div>
+  </footer>
+
+</div>
+
+<script>
+// ── Starfield ──────────────────────────────────────────────────────────
+(function() {
+  const canvas = document.getElementById('stars');
+  const ctx = canvas.getContext('2d');
+  let W, H, stars = [];
+
+  function resize() {
+    W = canvas.width = window.innerWidth;
+    H = canvas.height = window.innerHeight;
+  }
+  window.addEventListener('resize', resize);
+  resize();
+
+  for (let i = 0; i < 320; i++) {
+    stars.push({
+      x: Math.random(), y: Math.random(),
+      r: Math.random() * 1.2 + 0.2,
+      a: Math.random(),
+      speed: Math.random() * 0.0004 + 0.0001,
+      phase: Math.random() * Math.PI * 2
+    });
+  }
+
+  let t = 0;
+  function draw() {
+    ctx.clearRect(0, 0, W, H);
+    t += 0.01;
+    stars.forEach(s => {
+      const alpha = s.a * (0.5 + 0.5 * Math.sin(t * s.speed * 100 + s.phase));
+      ctx.beginPath();
+      ctx.arc(s.x * W, s.y * H, s.r, 0, Math.PI * 2);
+      ctx.fillStyle = `rgba(200,210,240,${alpha})`;
+      ctx.fill();
+    });
+    requestAnimationFrame(draw);
+  }
+  draw();
+})();
+
+// ── Clock ──────────────────────────────────────────────────────────────
+function updateClock() {
+  const now = new Date();
+  const pad = n => String(n).padStart(2,'0');
+  document.getElementById('clock').textContent =
+    `${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
+
+  const days = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+  const months = ['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'];
+  document.getElementById('dateline').textContent =
+    `${days[now.getDay()]} · ${pad(now.getDate())} ${months[now.getMonth()]} ${now.getFullYear()}`;
+}
+setInterval(updateClock, 1000);
+updateClock();
+
+// ── Spectrum Bars ──────────────────────────────────────────────────────
+const specContainer = document.getElementById('spectrum');
+const specBars = [];
+for (let i = 0; i < 24; i++) {
+  const b = document.createElement('div');
+  b.className = 'spec-bar';
+  const hue = 180 + i * 3;
+  b.style.background = `hsl(${hue},70%,40%)`;
+  b.style.borderTopColor = `hsl(${hue},90%,65%)`;
+  specContainer.appendChild(b);
+  specBars.push(b);
+}
+function animateSpectrum() {
+  const t = Date.now() / 1000;
+  specBars.forEach((b, i) => {
+    const h = 15 + Math.abs(Math.sin(t * 0.7 + i * 0.4)) * 25;
+    b.style.height = h + 'px';
+  });
+  requestAnimationFrame(animateSpectrum);
+}
+animateSpectrum();
+
+// ── Live readouts ──────────────────────────────────────────────────────
+function rand(min, max, dec=2) {
+  return (Math.random() * (max - min) + min).toFixed(dec);
+}
+function liveUpdate() {
+  document.getElementById('solar-val').textContent = rand(6, 12, 1);
+  document.getElementById('flux-val').textContent = rand(48000, 52000, 0);
+  document.getElementById('ray-val').textContent = rand(2.4, 3.1, 2);
+  document.getElementById('dm-val').textContent = rand(0.28, 0.35, 2);
+  document.getElementById('bearing-val').textContent =
+    `${rand(0,360,1)}° · ${rand(-90,90,1)}°`;
+  document.getElementById('entropy').textContent = rand(1e29, 9e29, 2) + 'e+29';
+}
+setInterval(liveUpdate, 2000);
+liveUpdate();
+
+// ── Orrery ─────────────────────────────────────────────────────────────
+(function() {
+  const canvas = document.getElementById('orrery-canvas');
+  const ctx = canvas.getContext('2d');
+  const W = 420, H = 420, cx = W/2, cy = H/2;
+
+  const planets = [
+    { name:'Mercury', r:5,  orbit:50,  speed:4.15,  color:'#b5a085', ring:false },
+    { name:'Venus',   r:8,  orbit:80,  speed:1.62,  color:'#e8c080', ring:false },
+    { name:'Earth',   r:9,  orbit:115, speed:1.00,  color:'#4a90d8', ring:false, moon:true },
+    { name:'Mars',    r:6,  orbit:152, speed:0.53,  color:'#c8604a', ring:false },
+  ];
+
+  const tickMarks = 72;
+  let angle = 0;
+
+  // Tooltip state
+  let hover = null;
+  canvas.addEventListener('mousemove', e => {
+    const rect = canvas.getBoundingClientRect();
+    const mx = (e.clientX - rect.left) * (W / rect.width);
+    const my = (e.clientY - rect.top) * (H / rect.height);
+    hover = null;
+    planets.forEach(p => {
+      const px = cx + Math.cos(angle * p.speed * 0.01) * p.orbit;
+      const py = cy + Math.sin(angle * p.speed * 0.01) * p.orbit;
+      if (Math.hypot(mx - px, my - py) < p.r + 8) hover = p.name;
+    });
+    canvas.title = hover || '';
+  });
+
+  function drawGoldenCircle(r) {
+    ctx.beginPath();
+    ctx.arc(cx, cy, r, 0, Math.PI * 2);
+    ctx.strokeStyle = 'rgba(201,168,76,0.15)';
+    ctx.lineWidth = 0.5;
+    ctx.stroke();
+  }
+
+  function drawTicks(r) {
+    for (let i = 0; i < tickMarks; i++) {
+      const a = (i / tickMarks) * Math.PI * 2;
+      const isMajor = i % 6 === 0;
+      const len = isMajor ? 8 : 4;
+      const x1 = cx + Math.cos(a) * (r - 12);
+      const y1 = cy + Math.sin(a) * (r - 12);
+      const x2 = cx + Math.cos(a) * (r - 12 + len);
+      const y2 = cy + Math.sin(a) * (r - 12 + len);
+      ctx.beginPath();
+      ctx.moveTo(x1, y1); ctx.lineTo(x2, y2);
+      ctx.strokeStyle = isMajor ? 'rgba(201,168,76,0.5)' : 'rgba(201,168,76,0.2)';
+      ctx.lineWidth = isMajor ? 1 : 0.5;
+      ctx.stroke();
+    }
+  }
+
+  function glowPlanet(px, py, r, color) {
+    const g = ctx.createRadialGradient(px, py, 0, px, py, r * 3.5);
+    g.addColorStop(0, color + 'cc');
+    g.addColorStop(0.4, color + '44');
+    g.addColorStop(1, 'transparent');
+    ctx.beginPath();
+    ctx.arc(px, py, r * 3.5, 0, Math.PI * 2);
+    ctx.fillStyle = g;
+    ctx.fill();
+  }
+
+  function draw() {
+    ctx.clearRect(0, 0, W, H);
+    angle += 0.4;
+
+    // Outer bezel
+    ctx.beginPath();
+    ctx.arc(cx, cy, 200, 0, Math.PI * 2);
+    ctx.strokeStyle = 'rgba(201,168,76,0.3)';
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+
+    drawTicks(200);
+
+    // Inner decorative ring
+    ctx.beginPath();
+    ctx.arc(cx, cy, 188, 0, Math.PI * 2);
+    ctx.strokeStyle = 'rgba(201,168,76,0.08)';
+    ctx.lineWidth = 6;
+    ctx.stroke();
+
+    // Crosshairs
+    ctx.setLineDash([2, 8]);
+    ctx.strokeStyle = 'rgba(201,168,76,0.12)';
+    ctx.lineWidth = 0.5;
+    ctx.beginPath(); ctx.moveTo(cx-200, cy); ctx.lineTo(cx+200, cy); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(cx, cy-200); ctx.lineTo(cx, cy+200); ctx.stroke();
+    ctx.setLineDash([]);
+
+    // Orbits
+    planets.forEach(p => drawGoldenCircle(p.orbit));
+
+    // Sun glow
+    const sunGlow = ctx.createRadialGradient(cx, cy, 0, cx, cy, 30);
+    sunGlow.addColorStop(0, '#fff8d0');
+    sunGlow.addColorStop(0.3, '#ffd460');
+    sunGlow.addColorStop(0.7, 'rgba(255,180,40,0.3)');
+    sunGlow.addColorStop(1, 'transparent');
+    ctx.beginPath();
+    ctx.arc(cx, cy, 30, 0, Math.PI * 2);
+    ctx.fillStyle = sunGlow;
+    ctx.fill();
+
+    // Sun core
+    ctx.beginPath();
+    ctx.arc(cx, cy, 12, 0, Math.PI * 2);
+    const sg = ctx.createRadialGradient(cx-3, cy-3, 0, cx, cy, 12);
+    sg.addColorStop(0, '#fff5a0');
+    sg.addColorStop(1, '#ffa020');
+    ctx.fillStyle = sg;
+    ctx.fill();
+
+    // Planets
+    planets.forEach(p => {
+      const a = angle * p.speed * 0.01;
+      const px = cx + Math.cos(a) * p.orbit;
+      const py = cy + Math.sin(a) * p.orbit;
+
+      glowPlanet(px, py, p.r, p.color);
+
+      // Planet body
+      ctx.beginPath();
+      ctx.arc(px, py, p.r, 0, Math.PI * 2);
+      const pg = ctx.createRadialGradient(px - p.r*0.3, py - p.r*0.3, 0, px, py, p.r);
+      pg.addColorStop(0, '#ffffff66');
+      pg.addColorStop(0.4, p.color);
+      pg.addColorStop(1, '#00000088');
+      ctx.fillStyle = pg;
+      ctx.fill();
+
+      // Moon (Earth)
+      if (p.moon) {
+        const ma = angle * 6.01 * 0.01;
+        const mr = 16;
+        const mx2 = px + Math.cos(ma) * mr;
+        const my2 = py + Math.sin(ma) * mr;
+        ctx.beginPath();
+        ctx.arc(mx2, my2, 2.5, 0, Math.PI * 2);
+        ctx.fillStyle = '#c8c8d8';
+        ctx.fill();
+      }
+
+      // Hover label
+      if (hover === p.name) {
+        ctx.font = '9px "Share Tech Mono"';
+        ctx.fillStyle = 'rgba(201,168,76,0.9)';
+        ctx.letterSpacing = '0.15em';
+        ctx.fillText(p.name.toUpperCase(), px + p.r + 6, py + 3);
+      }
+    });
+
+    // Center crosshair dot
+    ctx.beginPath();
+    ctx.arc(cx, cy, 2, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(201,168,76,0.8)';
+    ctx.fill();
+
+    requestAnimationFrame(draw);
+  }
+  draw();
+})();
+</script>
+</body>
+</html>
